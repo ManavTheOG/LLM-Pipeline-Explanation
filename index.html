@@ -1,0 +1,1114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- // WHAT THIS DOES: Sets the page title and helps the layout fit different screens. -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Pipeline Explorer</title>
+
+  <style>
+    /* // WHAT THIS DOES: Sets a plain white theme with colors that can be inverted by the toggle. */
+    :root {
+      color-scheme: light;
+      font-family: system-ui, sans-serif;
+      color: var(--page-text);
+      background: var(--page-bg);
+      font-synthesis: none;
+      --page-bg: #f4f5f7;
+      --page-text: #20242b;
+      --panel-bg: #fff;
+      --field-bg: #fff;
+      --border: #d7dbe2;
+      --muted: #626b78;
+      --accent: #315ed0;
+      --accent-hover: #254caf;
+      --accent-text: #fff;
+      --table-header-bg: #eef1f5;
+      --table-row-border: #e5e8ed;
+      --chart-bg: #fff;
+      --chart-text: #20242b;
+      --chart-axis: #626b78;
+      --chart-grid: #d7dbe2;
+      --chart-zero-line: #aab1bb;
+      --chart-point: #315ed0;
+      --chart-point-line: #fff;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+      line-height: 1.5;
+      background: var(--page-bg);
+    }
+
+    main {
+      display: grid;
+      gap: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      text-align: center;
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      letter-spacing: 0.035em;
+      color: var(--page-text);
+    }
+
+    /* // WHAT THIS DOES: Gives each pipeline section a simple white panel. */
+    section {
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel-bg);
+      box-shadow: 0 4px 16px rgb(25 35 50 / 6%);
+    }
+
+    h2 {
+      margin: 0 0 20px;
+      font-size: 1.4rem;
+      color: var(--page-text);
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    label,
+    legend {
+      font-weight: 650;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 112px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+      color: var(--page-text);
+      background: var(--field-bg);
+      resize: vertical;
+    }
+
+    textarea:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    .vocabulary-table-container:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    #encode-sentence {
+      min-height: 76px;
+    }
+
+    #encode-sentence-field {
+      margin-top: 18px;
+    }
+
+    /* // WHAT THIS DOES: Makes long vocabulary results scroll inside their own panel. */
+    .vocabulary-results {
+      margin-top: 18px;
+    }
+
+    .vocabulary-summary {
+      margin: 0 0 10px;
+      font-weight: 650;
+    }
+
+    .vocabulary-slider {
+      display: grid;
+      gap: 6px;
+      margin: 0 0 14px;
+    }
+
+    .vocabulary-slider label {
+      font-weight: 600;
+    }
+
+    .vocabulary-slider input {
+      width: 100%;
+      margin: 4px 0;
+      accent-color: var(--accent);
+      cursor: ew-resize;
+    }
+
+    .vocabulary-table-container {
+      max-height: 260px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--field-bg);
+    }
+
+    .vocabulary-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .vocabulary-table th,
+    .vocabulary-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--table-row-border);
+    }
+
+    .vocabulary-table th {
+      position: sticky;
+      top: 0;
+      color: var(--page-text);
+      background: var(--table-header-bg);
+    }
+
+    .vocabulary-table tbody tr:nth-child(even) {
+      background: color-mix(in srgb, var(--page-text) 3%, transparent);
+    }
+
+    .vocabulary-table td:first-child,
+    .vocabulary-table td:last-child {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* // WHAT THIS DOES: Shows token pieces as coloured chips with their IDs and simple counts. */
+    .tokenize-results {
+      margin-top: 18px;
+    }
+
+    .tokenize-note,
+    .tokenize-message {
+      margin: 0 0 12px;
+    }
+
+    .tokenize-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      margin: 0 0 14px;
+    }
+
+    .tokenize-metrics p {
+      margin: 0;
+    }
+
+    .token-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .token-chip {
+      display: grid;
+      justify-items: center;
+      min-width: 56px;
+      padding: 8px 10px;
+      border: 1px solid hsl(var(--chip-hue) 38% 53% / 75%);
+      border-radius: 9px;
+      background: hsl(var(--chip-hue) 32% 24% / 95%);
+    }
+
+    .token-chip-word {
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .token-chip-id {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    /* // WHAT THIS DOES: Styles buttons with a clear blue accent. */
+    button {
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 8px;
+      color: var(--accent-text);
+      background: var(--accent);
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgb(20 30 50 / 14%);
+      transition: background-color 140ms ease, transform 140ms ease;
+    }
+
+    button:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    /* // WHAT THIS DOES: Groups the embedding choices in a lightly shaded control. */
+    fieldset {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 24px;
+      margin: 0 0 18px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--table-header-bg);
+    }
+
+    fieldset label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 400;
+    }
+
+    input[type="radio"] {
+      accent-color: var(--accent);
+    }
+
+    .chart-area {
+      height: 520px;
+      margin-top: 20px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--chart-bg);
+      box-shadow: inset 0 0 16px rgb(25 35 50 / 4%);
+    }
+
+    /* // WHAT THIS DOES: Keeps embedding status and error messages close to the chart. */
+    .chart-message {
+      margin: 14px 0 0;
+      color: var(--muted);
+    }
+
+    /* // WHAT THIS DOES: Styles the similarity tables and custom sentence area below the chart. */
+    .similarity-section,
+    .custom-sentence-section {
+      margin-top: 24px;
+    }
+
+    .similarity-section h3,
+    .custom-sentence-section h3 {
+      margin: 0 0 12px;
+      font-size: 1.1rem;
+    }
+
+    .similarity-table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--field-bg);
+    }
+
+    .similarity-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .similarity-table th,
+    .similarity-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--table-row-border);
+      vertical-align: top;
+    }
+
+    .similarity-table th {
+      color: var(--page-text);
+      background: var(--table-header-bg);
+    }
+
+    .similarity-table td:last-child {
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pair-select {
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      color: var(--page-text);
+      background: var(--table-header-bg);
+      font: inherit;
+      font-weight: 600;
+      box-shadow: none;
+    }
+
+    .pair-select:hover,
+    .pair-select[aria-pressed="true"] {
+      color: var(--accent-text);
+      background: var(--accent);
+    }
+
+    .custom-tokenize-results,
+    .custom-results {
+      margin-top: 14px;
+    }
+
+    .custom-vector {
+      overflow-wrap: anywhere;
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      font-size: 0.9rem;
+    }
+
+    /* // WHAT THIS DOES: Keeps a small color-inversion toggle in the bottom-left corner. */
+    #theme-toggle {
+      position: fixed;
+      z-index: 10;
+      bottom: 16px;
+      left: 16px;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      color: var(--muted);
+      background: var(--panel-bg);
+      font-size: 1.15rem;
+      line-height: 1;
+      box-shadow: 0 2px 8px rgb(20 30 50 / 16%);
+      transition: color 140ms ease, background-color 140ms ease, transform 140ms ease;
+    }
+
+    #theme-toggle:hover {
+      color: var(--page-text);
+      background: var(--table-header-bg);
+      transform: rotate(12deg);
+    }
+
+    /* // WHAT THIS DOES: Changes the white theme to a dark inverse palette when selected. */
+    html.colors-inverted {
+      color-scheme: dark;
+      --page-bg: #17191d;
+      --page-text: #f0f1f3;
+      --panel-bg: #23262c;
+      --field-bg: #17191d;
+      --border: #454a53;
+      --muted: #b5bbc5;
+      --accent: #c9d5ff;
+      --accent-hover: #e0e6ff;
+      --accent-text: #18203a;
+      --table-header-bg: #30343c;
+      --table-row-border: #3a3f48;
+      --chart-bg: #17191d;
+      --chart-text: #f0f1f3;
+      --chart-axis: #b5bbc5;
+      --chart-grid: #454a53;
+      --chart-zero-line: #6a707b;
+      --chart-point: #c9d5ff;
+      --chart-point-line: #23262c;
+    }
+
+    /* // WHAT THIS DOES: Adds comfortable spacing on small screens. */
+    @media (max-width: 600px) {
+      body {
+        padding: 24px 14px 36px;
+      }
+
+      section {
+        padding: 18px;
+      }
+
+      .chart-area {
+        height: 520px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- // WHAT THIS DOES: Adds a small button that flips between the light and dark color palettes. -->
+  <button type="button" id="theme-toggle" aria-label="Invert page colors" aria-pressed="false" title="Invert page colors">◐</button>
+
+  <!-- // WHAT THIS DOES: Holds the page title and the two LLM pipeline sections. -->
+  <main>
+    <h1>LLM Pipeline Explorer</h1>
+
+    <!-- // WHAT THIS DOES: Shows training sentences and a sentence to tokenize. -->
+    <section aria-labelledby="tokenizer-heading">
+      <h2 id="tokenizer-heading">Part 1: Tokenizer</h2>
+
+      <div class="field">
+        <label for="training-sentences">Training sentences</label>
+        <textarea id="training-sentences" rows="6">The cat sat on the mat.
+A dog ran through the park.
+Birds fly across the blue sky.
+I like to read books.
+The sun is bright today.
+We play games after school.</textarea>
+      </div>
+      <button type="button" id="build-vocabulary">Build vocabulary</button>
+      <div id="vocabulary-results" class="vocabulary-results" aria-live="polite"></div>
+
+      <div class="field" id="encode-sentence-field">
+        <label for="encode-sentence">Encode a sentence</label>
+        <textarea id="encode-sentence" rows="2">The cat danced on the mat.</textarea>
+      </div>
+      <button type="button" id="tokenize-sentence">Tokenize</button>
+      <div id="tokenize-results" class="tokenize-results" aria-live="polite"></div>
+    </section>
+
+    <!-- // WHAT THIS DOES: Shows example sentences, embedding choices, and an empty chart space. -->
+    <section aria-labelledby="embeddings-heading">
+      <h2 id="embeddings-heading">Part 2: Embeddings in 3D</h2>
+
+      <div class="field">
+        <label for="embedding-sentences">Sentences (one per line)</label>
+        <textarea id="embedding-sentences" rows="8">The cat sat on the mat.
+A kitten rested on the rug.
+The bat sat on the mat.
+I love programming in Python.
+Coding in Python is my passion.
+Pythons are large snakes.
+The stock market crashed today.
+Share prices fell sharply.</textarea>
+      </div>
+
+      <fieldset>
+        <legend>Embedding method</legend>
+        <label for="spelling-based">
+          <input id="spelling-based" type="radio" name="embedding-method" value="spelling" checked>
+          Spelling-based
+        </label>
+        <label for="meaning-based">
+          <input id="meaning-based" type="radio" name="embedding-method" value="meaning">
+          Meaning-based
+        </label>
+      </fieldset>
+
+      <button type="button" id="embed-and-plot">Embed and plot</button>
+      <p id="chart-message" class="chart-message" aria-live="polite"></p>
+      <div id="embedding-chart" class="chart-area" role="region" aria-label="3D sentence embedding chart"></div>
+
+      <!-- // WHAT THIS DOES: Lists the five pairs of sentences with the most similar spelling vectors. -->
+      <div class="similarity-section">
+        <h3>Closest pairs</h3>
+        <div id="closest-pairs" class="similarity-table-container"></div>
+      </div>
+
+      <!-- // WHAT THIS DOES: Lets you tokenize a new sentence, add it to the chart, and compare it. -->
+      <div class="custom-sentence-section">
+        <h3>Try a sentence</h3>
+        <div class="field">
+          <label for="custom-sentence">Try your own word or sentence</label>
+          <textarea id="custom-sentence" rows="2" placeholder="Type a word or sentence"></textarea>
+        </div>
+        <button type="button" id="add-custom-sentence">Tokenize, embed &amp; add to plot</button>
+        <div id="custom-tokenize-results" class="custom-tokenize-results" aria-live="polite"></div>
+        <div id="custom-results" class="custom-results" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- // WHAT THIS DOES: Loads Plotly.js 4.3.0 from its official CDN to draw the interactive 3D chart. -->
+  <script src="https://cdn.plot.ly/plotly-4.3.0.min.js"></script>
+  <script>
+    // WHAT THIS DOES: Reads the page colors so the chart always matches the active theme.
+    function getChartPalette() {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        background: styles.getPropertyValue("--chart-bg").trim(),
+        text: styles.getPropertyValue("--chart-text").trim(),
+        axis: styles.getPropertyValue("--chart-axis").trim(),
+        grid: styles.getPropertyValue("--chart-grid").trim(),
+        zeroLine: styles.getPropertyValue("--chart-zero-line").trim(),
+        point: styles.getPropertyValue("--chart-point").trim(),
+        pointLine: styles.getPropertyValue("--chart-point-line").trim()
+      };
+    }
+
+    // WHAT THIS DOES: Switches the page colors and updates a chart that is already on screen.
+    document.getElementById("theme-toggle").addEventListener("click", function () {
+      const isInverted = document.documentElement.classList.toggle("colors-inverted");
+      document.getElementById("theme-toggle").setAttribute("aria-pressed", String(isInverted));
+
+      const chart = document.getElementById("embedding-chart");
+      if (typeof Plotly === "undefined" || chartSentences.length === 0) {
+        return;
+      }
+
+      drawEmbeddingChart(chartSentences, chartVectors, chartHighlightedIndex, selectedPair).catch(function (error) {
+        document.getElementById("chart-message").textContent =
+          "The chart colors could not be updated: " + error.message;
+      });
+    });
+
+    // WHAT THIS DOES: Remembers the IDs created by the Build vocabulary button for tokenizing.
+    let vocabularyIds = null;
+    let fullVocabulary = [];
+    let wordsKept = 0;
+    let sentenceHasBeenTokenized = false;
+    let chartSentences = [];
+    let chartVectors = [];
+    let chartHighlightedIndex = -1;
+    let selectedPair = null;
+
+    // WHAT THIS DOES: Turns the training sentences into lowercase words and separate punctuation tokens.
+    function getTrainingTokens(text) {
+      return text
+        .toLowerCase()
+        .replace(/[.,!?']/g, " $& ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+    }
+
+    // WHAT THIS DOES: Displays the selected top words and the slider for how many words to keep.
+    function renderVocabularyTable() {
+      const sortedTokens = fullVocabulary.slice(0, wordsKept);
+      vocabularyIds = new Map(sortedTokens.map(function (item, index) {
+        return [item.token, index + 1];
+      }));
+      const results = document.getElementById("vocabulary-results");
+      results.replaceChildren();
+
+      const summary = document.createElement("p");
+      summary.className = "vocabulary-summary";
+      summary.textContent = "Vocabulary size: " + (wordsKept + 1);
+      results.appendChild(summary);
+
+      const sliderField = document.createElement("div");
+      sliderField.className = "vocabulary-slider";
+      const sliderLabel = document.createElement("label");
+      sliderLabel.htmlFor = "words-kept";
+      sliderLabel.textContent = "Words kept: " + wordsKept + " of " + fullVocabulary.length;
+      const slider = document.createElement("input");
+      slider.id = "words-kept";
+      slider.type = "range";
+      slider.min = "0";
+      slider.max = String(fullVocabulary.length);
+      slider.value = String(wordsKept);
+      slider.setAttribute("aria-label", "Words kept");
+      slider.addEventListener("input", function () {
+        wordsKept = Number(slider.value);
+        sliderLabel.textContent = "Words kept: " + wordsKept + " of " + fullVocabulary.length;
+        summary.textContent = "Vocabulary size: " + (wordsKept + 1);
+        renderVocabularyRows(tableBody);
+        if (sentenceHasBeenTokenized) {
+          renderTokenizedSentence();
+        }
+      });
+      sliderField.append(sliderLabel, slider);
+      results.appendChild(sliderField);
+
+      const tableContainer = document.createElement("div");
+      tableContainer.className = "vocabulary-table-container";
+      tableContainer.setAttribute("role", "region");
+      tableContainer.setAttribute("aria-label", "Vocabulary table");
+      tableContainer.tabIndex = 0;
+
+      const table = document.createElement("table");
+      table.className = "vocabulary-table";
+      const tableHead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+
+      ["ID", "token", "count"].forEach(function (heading) {
+        const cell = document.createElement("th");
+        cell.scope = "col";
+        cell.textContent = heading;
+        headerRow.appendChild(cell);
+      });
+
+      tableHead.appendChild(headerRow);
+      table.appendChild(tableHead);
+
+      const tableBody = document.createElement("tbody");
+      renderVocabularyRows(tableBody);
+      table.appendChild(tableBody);
+      tableContainer.appendChild(table);
+      results.appendChild(tableContainer);
+    }
+
+    // WHAT THIS DOES: Gives the kept words IDs again and refreshes the visible vocabulary rows.
+    function renderVocabularyRows(tableBody) {
+      const sortedTokens = fullVocabulary.slice(0, wordsKept);
+      vocabularyIds = new Map(sortedTokens.map(function (item, index) {
+        return [item.token, index + 1];
+      }));
+      tableBody.replaceChildren();
+
+      const unknownRow = document.createElement("tr");
+      ["0", "[UNK]", "0"].forEach(function (value) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        unknownRow.appendChild(cell);
+      });
+      tableBody.appendChild(unknownRow);
+
+      sortedTokens.forEach(function (item, index) {
+        const row = document.createElement("tr");
+        [String(index + 1), item.token, String(item.count)].forEach(function (value) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        });
+        tableBody.appendChild(row);
+      });
+    }
+
+    // WHAT THIS DOES: Counts and sorts the words before showing the vocabulary slider and table.
+    document.getElementById("build-vocabulary").addEventListener("click", function () {
+      const counts = new Map();
+      getTrainingTokens(document.getElementById("training-sentences").value).forEach(function (token) {
+        counts.set(token, (counts.get(token) || 0) + 1);
+      });
+
+      fullVocabulary = Array.from(counts.entries())
+        .map(function (entry, order) {
+          return { token: entry[0], count: entry[1], order: order };
+        })
+        .sort(function (first, second) {
+          return second.count - first.count || first.order - second.order;
+        });
+      wordsKept = fullVocabulary.length;
+      renderVocabularyTable();
+      if (sentenceHasBeenTokenized) {
+        renderTokenizedSentence();
+      }
+    });
+
+    // WHAT THIS DOES: Breaks unknown words into character pieces and displays token chips and counts.
+    function renderTokenizedSentence(
+      sentence = document.getElementById("encode-sentence").value,
+      results = document.getElementById("tokenize-results")
+    ) {
+      results.replaceChildren();
+
+      if (vocabularyIds === null) {
+        const message = document.createElement("p");
+        message.className = "tokenize-message";
+        message.textContent = "Build the vocabulary first, then tokenize the sentence.";
+        results.appendChild(message);
+        return;
+      }
+
+      const tokens = [];
+
+      getTrainingTokens(sentence).forEach(function (token) {
+        if (vocabularyIds.has(token)) {
+          tokens.push({ text: token, id: vocabularyIds.get(token) });
+          return;
+        }
+
+        if (/^[.,!?']$/.test(token)) {
+          tokens.push({ text: token, id: 0 });
+          return;
+        }
+
+        Array.from(token).forEach(function (character, index) {
+          const piece = index === 0 ? character : "##" + character;
+          tokens.push({
+            text: piece,
+            id: vocabularyIds.has(piece) ? vocabularyIds.get(piece) : 0
+          });
+        });
+      });
+
+      const note = document.createElement("p");
+      note.className = "tokenize-note";
+      note.textContent = "unknown words are broken into smaller pieces";
+      results.appendChild(note);
+
+      const metrics = document.createElement("div");
+      metrics.className = "tokenize-metrics";
+      const characterCount = Array.from(sentence).length;
+      const charactersPerToken = tokens.length === 0
+        ? 0
+        : (characterCount / tokens.length).toFixed(2);
+      [
+        "Number of characters: " + characterCount,
+        "Number of tokens: " + tokens.length,
+        "Characters per token: " + charactersPerToken
+      ].forEach(function (text) {
+        const metric = document.createElement("p");
+        metric.textContent = text;
+        metrics.appendChild(metric);
+      });
+      results.appendChild(metrics);
+
+      const chips = document.createElement("div");
+      chips.className = "token-chips";
+      tokens.forEach(function (token) {
+        const chip = document.createElement("div");
+        chip.className = "token-chip";
+        chip.style.setProperty("--chip-hue", String(18 + ((token.id * 11) % 25)) + "deg");
+
+        const word = document.createElement("span");
+        word.className = "token-chip-word";
+        word.textContent = token.text;
+        const id = document.createElement("span");
+        id.className = "token-chip-id";
+        id.textContent = "ID " + token.id;
+
+        chip.append(word, id);
+        chips.appendChild(chip);
+      });
+      results.appendChild(chips);
+    }
+
+    // WHAT THIS DOES: Remembers that tokenization was requested so slider changes can refresh it live.
+    document.getElementById("tokenize-sentence").addEventListener("click", function () {
+      sentenceHasBeenTokenized = true;
+      renderTokenizedSentence();
+    });
+
+    // WHAT THIS DOES: Converts a sentence into 64 normalized counts of overlapping three-letter groups.
+    function getSpellingFeatures(sentence) {
+      const letters = sentence.toLowerCase().replace(/[^a-z]/g, "");
+      const features = new Array(64).fill(0);
+
+      for (let index = 0; index <= letters.length - 3; index += 1) {
+        const trigram = letters.slice(index, index + 3);
+        let hash = 0;
+        for (let letterIndex = 0; letterIndex < trigram.length; letterIndex += 1) {
+          hash = (hash * 31 + trigram.charCodeAt(letterIndex)) % 64;
+        }
+        features[hash] += 1;
+      }
+
+      const length = Math.sqrt(features.reduce(function (sum, count) {
+        return sum + count * count;
+      }, 0));
+
+      return length === 0
+        ? features
+        : features.map(function (count) {
+          return count / length;
+        });
+    }
+
+    // WHAT THIS DOES: Sketches each 64-number vector into three coordinates using simple weighted sums.
+    function reduceFeaturesTo3D(features) {
+      let x = 0;
+      let y = 0;
+      let z = 0;
+
+      features.forEach(function (value, index) {
+        const angle = (2 * Math.PI * index) / features.length;
+        x += value * Math.cos(angle);
+        y += value * Math.sin(angle);
+        z += value * (index % 2 === 0 ? 1 : -1);
+      });
+
+      return { x: x, y: y, z: z };
+    }
+
+    // WHAT THIS DOES: Measures how closely two full feature lists point in the same direction.
+    function getCosineSimilarity(first, second) {
+      let dotProduct = 0;
+      let firstLength = 0;
+      let secondLength = 0;
+      first.forEach(function (value, index) {
+        dotProduct += value * second[index];
+        firstLength += value * value;
+        secondLength += second[index] * second[index];
+      });
+      if (firstLength === 0 || secondLength === 0) {
+        return 0;
+      }
+      return dotProduct / (Math.sqrt(firstLength) * Math.sqrt(secondLength));
+    }
+
+    // WHAT THIS DOES: Builds a table of the five closest unique sentence pairs.
+    function renderClosestPairs(sentences, vectors) {
+      const container = document.getElementById("closest-pairs");
+      container.replaceChildren();
+      const pairs = [];
+
+      for (let firstIndex = 0; firstIndex < sentences.length; firstIndex += 1) {
+        for (let secondIndex = firstIndex + 1; secondIndex < sentences.length; secondIndex += 1) {
+          pairs.push({
+            first: sentences[firstIndex],
+            second: sentences[secondIndex],
+            firstIndex: firstIndex,
+            secondIndex: secondIndex,
+            similarity: getCosineSimilarity(vectors[firstIndex], vectors[secondIndex])
+          });
+        }
+      }
+
+      pairs.sort(function (first, second) {
+        return second.similarity - first.similarity;
+      });
+
+      const table = document.createElement("table");
+      table.className = "similarity-table";
+      const header = document.createElement("tr");
+      ["Sentence 1", "Sentence 2", "Cosine similarity"].forEach(function (text) {
+        const cell = document.createElement("th");
+        cell.scope = "col";
+        cell.textContent = text;
+        header.appendChild(cell);
+      });
+      const head = document.createElement("thead");
+      head.appendChild(header);
+      table.appendChild(head);
+
+      const body = document.createElement("tbody");
+      pairs.slice(0, 5).forEach(function (pair) {
+        const row = document.createElement("tr");
+        [pair.first, pair.second].forEach(function (text) {
+          const cell = document.createElement("td");
+          cell.textContent = text;
+          row.appendChild(cell);
+        });
+        const scoreCell = document.createElement("td");
+        const selectPair = document.createElement("button");
+        selectPair.type = "button";
+        selectPair.className = "pair-select";
+        selectPair.textContent = pair.similarity.toFixed(3);
+        selectPair.setAttribute("aria-label", "Show vector arrow for similarity " + pair.similarity.toFixed(3));
+        selectPair.setAttribute(
+          "aria-pressed",
+          String(selectedPair !== null &&
+            selectedPair.firstIndex === pair.firstIndex &&
+            selectedPair.secondIndex === pair.secondIndex)
+        );
+        selectPair.addEventListener("click", function () {
+          selectedPair = pair;
+          renderClosestPairs(chartSentences, chartVectors);
+          drawEmbeddingChart(chartSentences, chartVectors, chartHighlightedIndex, selectedPair)
+            .catch(function (error) {
+              document.getElementById("chart-message").textContent =
+                "The vector arrow could not be drawn: " + error.message;
+            });
+        });
+        scoreCell.appendChild(selectPair);
+        row.appendChild(scoreCell);
+        body.appendChild(row);
+      });
+      table.appendChild(body);
+      container.appendChild(table);
+    }
+
+    // WHAT THIS DOES: Draws the sentence vectors, optionally highlighting the newest sentence.
+    function drawEmbeddingChart(sentences, vectors, highlightedIndex = -1, pair = null) {
+      const palette = getChartPalette();
+      const baseIndexes = sentences.map(function (_sentence, index) {
+        return index;
+      }).filter(function (index) {
+        return index !== highlightedIndex;
+      });
+
+      function makeTrace(indexes, isHighlight) {
+        const points = indexes.map(function (index) {
+          return reduceFeaturesTo3D(vectors[index]);
+        });
+        return {
+          type: "scatter3d",
+          mode: "markers+text",
+          x: points.map(function (point) { return point.x; }),
+          y: points.map(function (point) { return point.y; }),
+          z: points.map(function (point) { return point.z; }),
+          text: indexes.map(function (index) {
+            if (pair !== null &&
+              (index === pair.firstIndex || index === pair.secondIndex)) {
+              return "";
+            }
+            return isHighlight ? "You" : "S" + (index + 1);
+          }),
+          textposition: "top center",
+          customdata: indexes.map(function (index) { return sentences[index]; }),
+          hovertemplate: "%{customdata}<extra></extra>",
+          showlegend: false,
+          marker: {
+            size: isHighlight ? 12 : 6,
+            color: isHighlight ? "#f28c28" : palette.point,
+            line: { color: palette.pointLine, width: 1 },
+            opacity: 0.9
+          },
+          textfont: { color: palette.text }
+        };
+      }
+
+      const traces = [makeTrace(baseIndexes, false)];
+      if (highlightedIndex >= 0) {
+        traces.push(makeTrace([highlightedIndex], true));
+      }
+
+      if (pair !== null) {
+        const firstPoint = reduceFeaturesTo3D(vectors[pair.firstIndex]);
+        const secondPoint = reduceFeaturesTo3D(vectors[pair.secondIndex]);
+        const deltaX = secondPoint.x - firstPoint.x;
+        const deltaY = secondPoint.y - firstPoint.y;
+        const deltaZ = secondPoint.z - firstPoint.z;
+        traces.push({
+          type: "scatter3d",
+          mode: "lines+text",
+          x: [firstPoint.x, secondPoint.x],
+          y: [firstPoint.y, secondPoint.y],
+          z: [firstPoint.z, secondPoint.z],
+          text: ["", "cosine " + pair.similarity.toFixed(3)],
+          textposition: "top center",
+          line: { color: "#e47724", width: 6 },
+          showlegend: false,
+          hovertemplate:
+            sentences[pair.firstIndex] + " → " + sentences[pair.secondIndex] +
+            "<br>Cosine similarity: " + pair.similarity.toFixed(3) + "<extra></extra>"
+        });
+        traces.push({
+          type: "cone",
+          x: [secondPoint.x],
+          y: [secondPoint.y],
+          z: [secondPoint.z],
+          u: [deltaX],
+          v: [deltaY],
+          w: [deltaZ],
+          anchor: "tip",
+          sizemode: "absolute",
+          sizeref: Math.max(Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ) * 0.3, 0.06),
+          colorscale: [[0, "#e47724"], [1, "#e47724"]],
+          showscale: false,
+          showlegend: false,
+          hoverinfo: "skip"
+        });
+      }
+
+      const chart = document.getElementById("embedding-chart");
+      return Plotly.react(chart, traces, {
+        paper_bgcolor: palette.background,
+        plot_bgcolor: palette.background,
+        font: { color: palette.text, family: "system-ui, sans-serif" },
+        margin: { l: 0, r: 0, t: 24, b: 0 },
+        scene: {
+          bgcolor: palette.background,
+          xaxis: { title: "x", color: palette.axis, gridcolor: palette.grid, zerolinecolor: palette.zeroLine },
+          yaxis: { title: "y", color: palette.axis, gridcolor: palette.grid, zerolinecolor: palette.zeroLine },
+          zaxis: { title: "z", color: palette.axis, gridcolor: palette.grid, zerolinecolor: palette.zeroLine },
+          aspectmode: "cube"
+        }
+      }, {
+        responsive: true,
+        displaylogo: false
+      });
+    }
+
+    // WHAT THIS DOES: Reports the three existing sentences nearest to the newly added example.
+    function renderCustomNearest(sentences, vectors, addedIndex) {
+      const results = document.getElementById("custom-results");
+      results.replaceChildren();
+      const title = document.createElement("h4");
+      title.textContent = "Three closest sentences";
+      results.appendChild(title);
+
+      const vectorLabel = document.createElement("p");
+      vectorLabel.textContent = "First 8 vector numbers:";
+      results.appendChild(vectorLabel);
+      const vector = document.createElement("p");
+      vector.className = "custom-vector";
+      vector.textContent = vectors[addedIndex].slice(0, 8).map(function (value) {
+        return value.toFixed(3);
+      }).join(", ");
+      results.appendChild(vector);
+
+      const nearest = sentences.map(function (sentence, index) {
+        return {
+          sentence: sentence,
+          similarity: getCosineSimilarity(vectors[addedIndex], vectors[index]),
+          index: index
+        };
+      }).filter(function (item) {
+        return item.index !== addedIndex;
+      }).sort(function (first, second) {
+        return second.similarity - first.similarity;
+      }).slice(0, 3);
+
+      const list = document.createElement("ol");
+      nearest.forEach(function (item) {
+        const row = document.createElement("li");
+        row.textContent = item.sentence + " (cosine: " + item.similarity.toFixed(3) + ")";
+        list.appendChild(row);
+      });
+      results.appendChild(list);
+    }
+
+    // WHAT THIS DOES: Plots all typed sentences and refreshes their closest-pairs table.
+    document.getElementById("embed-and-plot").addEventListener("click", function () {
+      const message = document.getElementById("chart-message");
+      message.textContent = "";
+
+      if (document.getElementById("meaning-based").checked) {
+        message.textContent = "This stage supports Spelling-based embeddings. Select Spelling-based to plot.";
+        return;
+      }
+
+      const sentences = document.getElementById("embedding-sentences").value
+        .split(/\r?\n/)
+        .map(function (sentence) { return sentence.trim(); })
+        .filter(Boolean);
+
+      if (sentences.length < 4) {
+        message.textContent = "Enter at least 4 sentences to make a plot.";
+        return;
+      }
+      if (typeof Plotly === "undefined") {
+        message.textContent = "The chart library did not load. Check your internet connection and try again.";
+        return;
+      }
+
+      const vectors = sentences.map(getSpellingFeatures);
+      chartSentences = sentences;
+      chartVectors = vectors;
+      chartHighlightedIndex = -1;
+      selectedPair = null;
+      renderClosestPairs(sentences, vectors);
+      drawEmbeddingChart(sentences, vectors, chartHighlightedIndex, selectedPair).catch(function (error) {
+        message.textContent = "The chart could not be drawn: " + error.message;
+      });
+    });
+
+    // WHAT THIS DOES: Tokenizes, embeds, charts, and compares a newly entered sentence.
+    document.getElementById("add-custom-sentence").addEventListener("click", function () {
+      const message = document.getElementById("chart-message");
+      const customSentence = document.getElementById("custom-sentence").value.trim();
+      const tokenResults = document.getElementById("custom-tokenize-results");
+      const customResults = document.getElementById("custom-results");
+      tokenResults.replaceChildren();
+      customResults.replaceChildren();
+      message.textContent = "";
+
+      if (!customSentence) {
+        message.textContent = "Enter a word or sentence first.";
+        return;
+      }
+      if (document.getElementById("meaning-based").checked) {
+        message.textContent = "This stage supports Spelling-based embeddings. Select Spelling-based to add a sentence.";
+        return;
+      }
+      if (typeof Plotly === "undefined") {
+        message.textContent = "The chart library did not load. Check your internet connection and try again.";
+        return;
+      }
+      if (vocabularyIds === null) {
+        document.getElementById("build-vocabulary").click();
+      }
+
+      renderTokenizedSentence(customSentence, tokenResults);
+
+      const sentences = document.getElementById("embedding-sentences").value
+        .split(/\r?\n/)
+        .map(function (sentence) { return sentence.trim(); })
+        .filter(Boolean);
+      sentences.push(customSentence);
+      if (sentences.length < 4) {
+        message.textContent = "Add at least 3 sentences to the list before adding your own.";
+        return;
+      }
+
+      document.getElementById("embedding-sentences").value = sentences.join("\n");
+      const vectors = sentences.map(getSpellingFeatures);
+      const addedIndex = sentences.length - 1;
+      chartSentences = sentences;
+      chartVectors = vectors;
+      chartHighlightedIndex = addedIndex;
+      selectedPair = null;
+      renderClosestPairs(sentences, vectors);
+      renderCustomNearest(sentences, vectors, addedIndex);
+      drawEmbeddingChart(sentences, vectors, chartHighlightedIndex, selectedPair).catch(function (error) {
+        message.textContent = "The chart could not be drawn: " + error.message;
+      });
+    });
+  </script>
+</body>
+</html>
